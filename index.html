@@ -1,0 +1,675 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <meta name="theme-color" content="#060A10">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <title>FENCE SENTINEL — Smart Electrical-Field Detection & Safety Monitoring</title>
+    <meta name="description" content="Non-contact electrical-field sensing, waveform classification, smartphone GPS location, and safety inspection monitoring system.">
+    <link rel="manifest" href="manifest.json">
+    <link rel="stylesheet" href="styles.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+</head>
+<body>
+
+<div id="app-container">
+
+    <!-- ===== LANDING / SPLASH SCREEN ===== -->
+    <div id="landing-screen">
+        <div class="landing-graphic">
+            <div class="pulse-ring"></div>
+            <div class="pulse-ring"></div>
+            <i class="fa-solid fa-bolt-lightning landing-icon"></i>
+        </div>
+        <div class="landing-title">FENCE SENTINEL</div>
+        <div class="landing-tagline">Sense · Classify · Locate · Protect</div>
+        <div class="landing-sub">Smart Non-Contact Electrical-Field Detection & Safety Monitoring System</div>
+        <div class="landing-actions">
+            <button class="btn btn-primary btn-lg" id="btn-enter-dashboard"><i class="fa-solid fa-gauge-high"></i> ENTER DASHBOARD</button>
+            <button class="btn btn-secondary btn-lg" id="btn-start-patrol-landing"><i class="fa-solid fa-route"></i> START PATROL</button>
+        </div>
+    </div>
+
+    <!-- ===== TOP HEADER ===== -->
+    <header class="app-header">
+        <div class="header-brand">
+            <div class="brand-logo"><i class="fa-solid fa-shield-halved"></i></div>
+            <div class="brand-text">
+                <h1>FENCE SENTINEL</h1>
+                <p>Safety & Field Monitoring</p>
+            </div>
+        </div>
+        <div class="header-right">
+            <div class="mode-badge demo" id="badge-mode">DEMO DATA</div>
+            <div class="mode-badge demo" id="badge-ml-mode" style="margin-left:4px;">DEMO ML</div>
+        </div>
+    </header>
+
+    <!-- ===== STATUS STRIP (Tap to open full diagnostic drawer) ===== -->
+    <div class="status-strip" id="status-strip" title="Tap for system diagnostic drawer">
+        <div class="status-chip"><div class="status-dot warning" id="dot-ble"></div><span id="label-ble">BLE DEMO</span></div>
+        <div class="status-chip"><div class="status-dot active" id="dot-gps"></div><span id="label-gps">GPS READY</span></div>
+        <div class="status-chip"><div class="status-dot active"></div><span>SENSOR ACTIVE</span></div>
+        <div class="status-chip"><i class="fa-solid fa-battery-three-quarters" style="color:var(--color-pulsed);font-size:10px;"></i><span id="label-battery">87%</span></div>
+        <div class="autoscan-indicator" id="autoscan-badge" style="display:none;"><div class="autoscan-dot"></div>AUTO-SCAN ACTIVE</div>
+    </div>
+
+    <!-- ===== MAIN CONTENT BODY ===== -->
+    <div class="main-wrapper">
+        <!-- Desktop Sidebar Nav -->
+        <aside class="app-sidebar">
+            <div class="nav-item active" data-view="dashboard"><i class="fa-solid fa-gauge-high nav-icon"></i> Home</div>
+            <div class="nav-item" data-view="signal"><i class="fa-solid fa-wave-square nav-icon"></i> Signal Intelligence</div>
+            <div class="nav-item" data-view="map"><i class="fa-solid fa-map-location-dot nav-icon"></i> Live Map</div>
+            <div class="nav-item" data-view="events"><i class="fa-solid fa-list-check nav-icon"></i> Detection Events</div>
+            <div class="nav-item" data-view="patrol"><i class="fa-solid fa-route nav-icon"></i> Patrol Mode</div>
+            <div class="nav-item" data-view="inspection"><i class="fa-solid fa-clipboard-check nav-icon"></i> Inspection</div>
+            <div class="nav-item" data-view="device"><i class="fa-solid fa-microchip nav-icon"></i> Device & BLE</div>
+            <div class="nav-item" data-view="settings"><i class="fa-solid fa-sliders nav-icon"></i> Settings</div>
+        </aside>
+
+        <!-- Dynamic Content View Area -->
+        <main class="content-area">
+
+            <!-- ==========================================
+                 1. HOME / COMMAND CENTER
+                 ========================================== -->
+            <section id="view-dashboard" class="view-section active">
+                <!-- Alert Banner -->
+                <div class="alert-banner" id="dash-alert-banner">
+                    <i class="fa-solid fa-shield-halved" style="font-size:18px;color:var(--color-pulsed);flex-shrink:0;margin-top:1px;"></i>
+                    <div>
+                        <div class="alert-title" id="dash-alert-title">Sensing Active</div>
+                        <div class="alert-desc" id="dash-alert-desc">Monitoring electrical field patterns. Maintain safe distance around energized structures.</div>
+                    </div>
+                </div>
+
+                <!-- Signal Status Hero Card -->
+                <div class="card">
+                    <div class="card-header">
+                        <div class="card-title"><i class="fa-solid fa-satellite-dish"></i> CURRENT SIGNAL</div>
+                        <span class="mode-badge demo" id="hero-demo-tag">DEMO DATA</span>
+                    </div>
+
+                    <!-- Big Circular Gauge -->
+                    <div class="signal-gauge-container">
+                        <div class="signal-gauge" id="hero-gauge">
+                            <div class="gauge-ring"></div>
+                            <div class="gauge-ring-fill" id="gauge-ring-fill"></div>
+                            <div class="gauge-ring-glow" id="gauge-ring-glow"></div>
+                            <div class="gauge-inner">
+                                <div class="gauge-value" id="gauge-value">84</div>
+                                <div class="gauge-unit">% SIGNAL</div>
+                            </div>
+                        </div>
+
+                        <div class="signal-type-label" id="hero-type">PULSED FENCE-LIKE</div>
+                        
+                        <div class="signal-confidence">
+                            <span>Signal Intelligence Confidence:</span>
+                            <strong style="color:#FFF;font-size:15px;" id="hero-confidence">91%</strong>
+                            <span class="badge badge-success" id="hero-status-badge">SAFE PULSED</span>
+                        </div>
+
+                        <!-- Verification Progress Bar -->
+                        <div class="verify-bar" id="verify-bar" style="width:220px;display:none;">
+                            <div class="verify-bar-fill" id="verify-bar-fill"></div>
+                        </div>
+                    </div>
+
+                    <!-- Stability Indicator -->
+                    <div style="display:flex;justify-content:space-around;padding:10px;background:rgba(10,16,28,0.7);border-radius:10px;margin-bottom:12px;">
+                        <div style="text-align:center;">
+                            <div class="metric-label">Signal Stability</div>
+                            <div style="font-family:var(--font-mono);font-weight:700;font-size:14px;color:var(--color-pulsed);" id="stability-label">HIGH — 91%</div>
+                        </div>
+                        <div style="text-align:center;">
+                            <div class="metric-label">Hardware Mirror</div>
+                            <div style="display:flex;align-items:center;gap:6px;justify-content:center;margin-top:2px;" id="hw-mirror">
+                                <div class="status-dot active" id="hw-led" title="ESP32 LED State"></div>
+                                <span style="font-size:11px;font-weight:700;" id="hw-buzzer-label">BUZZER OFF</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Telemetry Metrics Grid -->
+                    <div class="telemetry-grid">
+                        <div class="metric-item"><div class="metric-label">Frequency</div><div class="metric-value" id="val-freq">1.20 <span class="metric-unit">Hz</span></div></div>
+                        <div class="metric-item"><div class="metric-label">RMS Voltage</div><div class="metric-value" id="val-rms">1.84 <span class="metric-unit">V</span></div></div>
+                        <div class="metric-item"><div class="metric-label">Peak-to-Peak</div><div class="metric-value" id="val-p2p">2.70 <span class="metric-unit">V</span></div></div>
+                        <div class="metric-item"><div class="metric-label">Detection Time</div><div class="metric-value" id="val-time" style="font-size:13px;">10:42:15</div></div>
+                    </div>
+                </div>
+
+                <!-- Live Oscilloscope Quickview -->
+                <div class="card">
+                    <div class="card-header">
+                        <div class="card-title"><i class="fa-solid fa-wave-square"></i> LIVE WAVEFORM QUICKVIEW</div>
+                        <button class="btn btn-secondary btn-sm" id="btn-dash-freeze"><i class="fa-solid fa-pause"></i> FREEZE</button>
+                    </div>
+                    <div class="canvas-wrapper" style="height:140px;"><canvas id="dash-canvas-osc"></canvas></div>
+                </div>
+
+                <!-- Explainable Rationale -->
+                <div class="card">
+                    <div class="card-header">
+                        <div class="card-title"><i class="fa-solid fa-lightbulb"></i> WHY THIS RESULT? (EXPLAINABLE EVIDENCE)</div>
+                    </div>
+                    <div class="explain-box">
+                        <ul class="explain-list" id="explain-rationale-list">
+                            <li><span class="check">✓</span> High-amplitude periodic voltage spikes detected</li>
+                            <li><span class="check">✓</span> Regular pulse repetition rate of 1.20 Hz</li>
+                            <li><span class="check">✓</span> Low baseline duty cycle between impulses</li>
+                        </ul>
+                    </div>
+                </div>
+
+                <!-- Quick Action Buttons -->
+                <div style="display:flex;gap:10px;">
+                    <button class="btn btn-primary" style="flex:1;" id="btn-save-current-event"><i class="fa-solid fa-bookmark"></i> SAVE SNAPSHOT</button>
+                    <button class="btn btn-danger" style="flex:1;" id="btn-flag-current-event"><i class="fa-solid fa-flag"></i> FLAG EVENT</button>
+                </div>
+
+                <!-- Safety Reminder Notice -->
+                <div class="safety-banner">
+                    <i class="fa-solid fa-triangle-exclamation"></i>
+                    <span><strong>SAFETY REMINDER:</strong> Maintain a safe distance from energized fencing. Do not touch the fence or sensing equipment while investigating.</span>
+                </div>
+            </section>
+
+            <!-- ==========================================
+                 2. SIGNAL INTELLIGENCE & WAVEFORM
+                 ========================================== -->
+            <section id="view-signal" class="view-section">
+                <!-- Raw Oscilloscope -->
+                <div class="card">
+                    <div class="card-header">
+                        <div class="card-title"><i class="fa-solid fa-wave-square"></i> RAW HIGH-SPEED OSCILLOSCOPE (ADC)</div>
+                        <div style="display:flex;gap:6px;">
+                            <button class="btn btn-secondary btn-sm" id="btn-osc-pause"><i class="fa-solid fa-pause"></i> PAUSE</button>
+                            <button class="btn btn-secondary btn-sm" id="btn-osc-clear"><i class="fa-solid fa-eraser"></i> CLEAR</button>
+                        </div>
+                    </div>
+                    <div class="canvas-wrapper" style="height:220px;"><canvas id="main-canvas-osc"></canvas></div>
+                </div>
+
+                <!-- Frequency Spectrum / FFT -->
+                <div class="card">
+                    <div class="card-header">
+                        <div class="card-title"><i class="fa-solid fa-chart-column"></i> FREQUENCY SPECTRUM / HARMONICS</div>
+                    </div>
+                    <div class="canvas-wrapper" style="height:140px;"><canvas id="main-canvas-spec"></canvas></div>
+                </div>
+
+                <!-- Extracted Physical Signal Features -->
+                <div class="card">
+                    <div class="card-header">
+                        <div class="card-title"><i class="fa-solid fa-list-ol"></i> EXTRACTED SIGNAL FEATURES</div>
+                    </div>
+                    <div class="telemetry-grid">
+                        <div class="metric-item"><div class="metric-label">ADC Sample Rate</div><div class="metric-value">1,000 <span class="metric-unit">Hz</span></div></div>
+                        <div class="metric-item"><div class="metric-label">Buffer Size</div><div class="metric-value">256 <span class="metric-unit">pts</span></div></div>
+                        <div class="metric-item"><div class="metric-label">Noise Floor</div><div class="metric-value" id="an-noise">0.05 <span class="metric-unit">V</span></div></div>
+                        <div class="metric-item"><div class="metric-label">Pulse Repetition</div><div class="metric-value" id="an-period">0.83 <span class="metric-unit">s</span></div></div>
+                        <div class="metric-item"><div class="metric-label">Estimated Rise Time</div><div class="metric-value" id="an-risetime">0.004 <span class="metric-unit">s</span></div></div>
+                        <div class="metric-item"><div class="metric-label">Harmonic Ratio</div><div class="metric-value" id="an-harmonic">0.18</div></div>
+                    </div>
+                </div>
+
+                <!-- Signal Classification & Class Probabilities -->
+                <div class="card">
+                    <div class="card-header">
+                        <div class="card-title"><i class="fa-solid fa-brain"></i> CLASSIFICATION CLASS PROBABILITIES</div>
+                        <span class="mode-badge demo" id="model-tag-sig">RANDOM FOREST ENSEMBLE</span>
+                    </div>
+                    <div class="confidence-bar-group">
+                        <div class="confidence-row"><div class="confidence-header"><span>PULSED FENCE-LIKE</span><span id="cp-pulsed-pct">91%</span></div><div class="confidence-track"><div class="confidence-fill pulsed" id="cp-pulsed-bar" style="width:91%;"></div></div></div>
+                        <div class="confidence-row"><div class="confidence-header"><span>CONTINUOUS / MAINS-LIKE</span><span id="cp-mains-pct">4%</span></div><div class="confidence-track"><div class="confidence-fill mains" id="cp-mains-bar" style="width:4%;"></div></div></div>
+                        <div class="confidence-row"><div class="confidence-header"><span>AMBIENT EMI</span><span id="cp-ambient-pct">3%</span></div><div class="confidence-track"><div class="confidence-fill ambient" id="cp-ambient-bar" style="width:3%;"></div></div></div>
+                        <div class="confidence-row"><div class="confidence-header"><span>UNCERTAIN</span><span id="cp-uncertain-pct">2%</span></div><div class="confidence-track"><div class="confidence-fill uncertain" id="cp-uncertain-bar" style="width:2%;"></div></div></div>
+                    </div>
+                </div>
+
+                <!-- 2D Signal Fingerprint Radar Chart -->
+                <div class="card">
+                    <div class="card-header"><div class="card-title"><i class="fa-solid fa-fingerprint"></i> 2D SIGNAL FINGERPRINT RADAR</div></div>
+                    <div class="canvas-wrapper" style="height:210px;"><canvas id="canvas-fingerprint"></canvas></div>
+                </div>
+
+                <!-- Signal Profile Bars -->
+                <div class="card">
+                    <div class="card-header"><div class="card-title"><i class="fa-solid fa-chart-bar"></i> COMPACT FEATURE PROFILE</div></div>
+                    <div class="profile-bar-group" id="signal-profile-bars">
+                        <div class="profile-row"><div class="profile-label">Periodicity</div><div class="profile-track"><div class="profile-fill" id="sp-period" style="width:91%;"></div></div><div class="profile-pct" id="sp-period-v">91%</div></div>
+                        <div class="profile-row"><div class="profile-label">Stability</div><div class="profile-track"><div class="profile-fill" id="sp-stab" style="width:84%;"></div></div><div class="profile-pct" id="sp-stab-v">84%</div></div>
+                        <div class="profile-row"><div class="profile-label">Noise Floor</div><div class="profile-track"><div class="profile-fill" id="sp-noise" style="width:18%;background:var(--color-mains);"></div></div><div class="profile-pct" id="sp-noise-v">18%</div></div>
+                        <div class="profile-row"><div class="profile-label">50Hz Component</div><div class="profile-track"><div class="profile-fill" id="sp-50hz" style="width:4%;"></div></div><div class="profile-pct" id="sp-50hz-v">4%</div></div>
+                        <div class="profile-row"><div class="profile-label">Harmonic Purity</div><div class="profile-track"><div class="profile-fill" id="sp-harm" style="width:85%;"></div></div><div class="profile-pct" id="sp-harm-v">85%</div></div>
+                    </div>
+                </div>
+
+                <!-- Confidence History Mini Chart -->
+                <div class="card">
+                    <div class="card-header"><div class="card-title"><i class="fa-solid fa-chart-line"></i> CONFIDENCE HISTORY TREND</div></div>
+                    <div class="canvas-wrapper confidence-history-chart" style="height:70px;"><canvas id="canvas-conf-history"></canvas></div>
+                </div>
+            </section>
+
+            <!-- ==========================================
+                 3. GEOSPATIAL MAP & PATROL VIEW
+                 ========================================== -->
+            <section id="view-map" class="view-section">
+                <div class="card" style="padding:10px;">
+                    <div class="card-header" style="margin-bottom:6px;">
+                        <div class="card-title"><i class="fa-solid fa-map"></i> PATROL MAP & HEATMAP</div>
+                        <div class="gps-quality" id="gps-quality-label"><div class="status-dot active"></div> <span>EXCELLENT ±4m</span></div>
+                    </div>
+
+                    <!-- Map Filter Bar -->
+                    <div style="display:flex;gap:6px;margin-bottom:8px;overflow-x:auto;padding-bottom:2px;">
+                        <button class="btn btn-secondary btn-sm map-filter-btn active" data-filter="ALL">ALL</button>
+                        <button class="btn btn-secondary btn-sm map-filter-btn" data-filter="PULSED">PULSED</button>
+                        <button class="btn btn-secondary btn-sm map-filter-btn" data-filter="MAINS">MAINS-LIKE</button>
+                        <button class="btn btn-secondary btn-sm map-filter-btn" data-filter="AMBIENT">AMBIENT</button>
+                        <button class="btn btn-secondary btn-sm map-filter-btn" data-filter="UNCERTAIN">UNCERTAIN</button>
+                    </div>
+
+                    <div id="map-container"></div>
+
+                    <!-- Nearest Flagged Event Strip -->
+                    <div style="display:flex;justify-content:space-between;align-items:center;margin-top:8px;font-size:11px;font-family:var(--font-mono);color:var(--text-muted);">
+                        <span id="map-coords">11.68530° N, 76.62910° E</span>
+                        <span id="nearest-flagged-label" style="color:var(--color-warning);font-weight:700;"><i class="fa-solid fa-location-crosshairs"></i> Nearest Flagged: —</span>
+                    </div>
+                </div>
+            </section>
+
+            <!-- ==========================================
+                 4. DETECTION EVENTS & HISTORY
+                 ========================================== -->
+            <section id="view-events" class="view-section">
+                <div class="card">
+                    <div class="card-header">
+                        <div class="card-title"><i class="fa-solid fa-clock-rotate-left"></i> DETECTION EVENT LOG</div>
+                        <div style="display:flex;gap:6px;">
+                            <button class="btn btn-secondary btn-sm" id="btn-export-csv"><i class="fa-solid fa-file-csv"></i> CSV</button>
+                            <button class="btn btn-secondary btn-sm" id="btn-export-json"><i class="fa-solid fa-file-code"></i> JSON</button>
+                        </div>
+                    </div>
+                    <div id="events-list-container" style="display:flex;flex-direction:column;gap:10px;">
+                        <div style="text-align:center;color:var(--text-muted);padding:24px;font-size:13px;">No detection events logged yet.</div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- ==========================================
+                 5. PATROL MODE INTERFACE
+                 ========================================== -->
+            <section id="view-patrol" class="view-section">
+                <div class="card" style="text-align:center;">
+                    <div class="card-title" style="justify-content:center;margin-bottom:8px;">FIELD PATROL MODE</div>
+                    <div class="patrol-timer" id="patrol-timer">00:00:00</div>
+                    <p style="color:var(--text-secondary);font-size:12px;margin-bottom:16px;">Active Field Inspection Protocol</p>
+
+                    <div style="display:flex;justify-content:center;gap:12px;margin-bottom:20px;">
+                        <button class="btn btn-primary btn-lg" id="btn-patrol-start"><i class="fa-solid fa-play"></i> START PATROL</button>
+                        <button class="btn btn-secondary btn-lg" id="btn-patrol-pause" disabled><i class="fa-solid fa-pause"></i> PAUSE</button>
+                        <button class="btn btn-danger btn-lg" id="btn-patrol-end" style="display:none;"><i class="fa-solid fa-stop"></i> END PATROL</button>
+                    </div>
+
+                    <div class="telemetry-grid" style="text-align:left;">
+                        <div class="metric-item"><div class="metric-label">Distance</div><div class="metric-value" id="patrol-dist">0.00 <span class="metric-unit">km</span></div></div>
+                        <div class="metric-item"><div class="metric-label">Detections</div><div class="metric-value" id="patrol-count">0</div></div>
+                        <div class="metric-item"><div class="metric-label">Flagged Events</div><div class="metric-value" id="patrol-flagged" style="color:var(--color-mains);">0</div></div>
+                        <div class="metric-item"><div class="metric-label">Walking Speed</div><div class="metric-value" id="patrol-speed">0.0 <span class="metric-unit">km/h</span></div></div>
+                    </div>
+                </div>
+
+                <!-- Current Signal Snapshot during patrol -->
+                <div class="card" id="patrol-signal-card">
+                    <div class="card-header"><div class="card-title"><i class="fa-solid fa-satellite-dish"></i> LIVE PATROL TELEMETRY</div></div>
+                    <div style="display:flex;align-items:center;gap:14px;">
+                        <div style="font-family:var(--font-mono);font-size:28px;font-weight:800;" id="patrol-signal-val">84%</div>
+                        <div>
+                            <div style="font-weight:700;font-size:14px;" id="patrol-signal-type">PULSED FENCE-LIKE</div>
+                            <div style="font-size:12px;color:var(--text-secondary);" id="patrol-signal-conf">Confidence 91%</div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- ==========================================
+                 6. INSPECTION & EVIDENCE WORKFLOW
+                 ========================================== -->
+            <section id="view-inspection" class="view-section">
+                <div class="card">
+                    <div class="card-header"><div class="card-title"><i class="fa-solid fa-clipboard-check"></i> INSPECTION & EVIDENCE MANAGER</div></div>
+                    <p style="color:var(--text-secondary);font-size:12px;margin-bottom:12px;">Manage event lifecycle (Detected → Flagged → Verified → False Positive) and attach notes & evidence.</p>
+                    <div id="inspection-active-container">
+                        <div style="text-align:center;color:var(--text-muted);padding:32px;border:1px dashed var(--border-color);border-radius:10px;font-size:12px;">
+                            No event selected. Tap an event from the Events tab or Flag from the Dashboard.
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- ==========================================
+                 7. DEVICE & BLE HARDWARE MANAGEMENT
+                 ========================================== -->
+            <section id="view-device" class="view-section">
+                <div class="card">
+                    <div class="card-header"><div class="card-title"><i class="fa-solid fa-microchip"></i> ESP32 BLE SENSOR MANAGEMENT</div></div>
+                    
+                    <!-- System Health Grid -->
+                    <div class="card-title" style="margin-bottom:8px;"><i class="fa-solid fa-heart-pulse"></i> SUBSYSTEM HEALTH</div>
+                    <div class="health-grid" style="margin-bottom:16px;" id="health-grid">
+                        <div class="health-item"><span class="health-icon health-warn"><i class="fa-solid fa-bluetooth-b"></i></span> BLE <span style="margin-left:auto;font-size:10px;color:var(--color-warning);">DEMO</span></div>
+                        <div class="health-item"><span class="health-icon health-ok"><i class="fa-solid fa-satellite-dish"></i></span> GPS <span style="margin-left:auto;font-size:10px;color:var(--color-pulsed);">READY</span></div>
+                        <div class="health-item"><span class="health-icon health-ok"><i class="fa-solid fa-bolt"></i></span> ADC <span style="margin-left:auto;font-size:10px;color:var(--color-pulsed);">READY</span></div>
+                        <div class="health-item"><span class="health-icon health-ok"><i class="fa-solid fa-tower-broadcast"></i></span> E-Field Probe <span style="margin-left:auto;font-size:10px;color:var(--color-pulsed);">ACTIVE</span></div>
+                        <div class="health-item"><span class="health-icon health-ok"><i class="fa-solid fa-battery-three-quarters"></i></span> Battery <span style="margin-left:auto;font-size:10px;" id="dev-battery-health">87%</span></div>
+                        <div class="health-item"><span class="health-icon health-ok"><i class="fa-solid fa-database"></i></span> Offline Store <span style="margin-left:auto;font-size:10px;color:var(--color-pulsed);">READY</span></div>
+                    </div>
+
+                    <div class="telemetry-grid" style="margin-bottom:16px;">
+                        <div class="metric-item"><div class="metric-label">Connection</div><div class="metric-value" style="font-size:12px;" id="dev-status-text">DEMO / DISCONNECTED</div></div>
+                        <div class="metric-item"><div class="metric-label">Signal RSSI</div><div class="metric-value" id="dev-rssi">-64 <span class="metric-unit">dBm</span></div></div>
+                        <div class="metric-item"><div class="metric-label">Battery Level</div><div class="metric-value" id="dev-battery">87 <span class="metric-unit">%</span></div></div>
+                        <div class="metric-item"><div class="metric-label">Firmware</div><div class="metric-value" style="font-size:11px;" id="dev-fw">v1.0.4-ESP32-S3</div></div>
+                    </div>
+
+                    <div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:16px;">
+                        <button class="btn btn-primary" id="btn-ble-connect"><i class="fa-solid fa-bluetooth-b"></i> PAIR ESP32</button>
+                        <button class="btn btn-secondary" id="btn-ble-disconnect"><i class="fa-solid fa-link-slash"></i> DISCONNECT</button>
+                        <button class="btn btn-secondary" id="btn-run-selftest"><i class="fa-solid fa-stethoscope"></i> SELF TEST</button>
+                    </div>
+
+                    <!-- BLE Console (Debug) -->
+                    <div class="card-title" style="margin-bottom:6px;"><i class="fa-solid fa-terminal"></i> LIVE BLE PACKET CONSOLE</div>
+                    <div id="ble-console-log" style="height:140px;background:#080C14;border:1px solid var(--border-color);border-radius:8px;padding:8px;font-family:var(--font-mono);font-size:10px;overflow-y:auto;color:var(--color-pulsed);">
+                        [SYS] Console ready. Awaiting BLE pairing...
+                    </div>
+                </div>
+
+                <!-- Sync Center -->
+                <div class="card">
+                    <div class="card-header"><div class="card-title"><i class="fa-solid fa-cloud-arrow-up"></i> OFFLINE SYNC CENTER</div></div>
+                    <div class="sync-stats">
+                        <div class="sync-stat"><div class="sync-stat-val" id="sync-pending">0</div><div class="sync-stat-label">Pending Sync</div></div>
+                        <div class="sync-stat"><div class="sync-stat-val" style="color:var(--color-pulsed);" id="sync-done">0</div><div class="sync-stat-label">Synced</div></div>
+                        <div class="sync-stat"><div class="sync-stat-val" style="color:var(--color-mains);" id="sync-failed">0</div><div class="sync-stat-label">Failed</div></div>
+                    </div>
+                    <button class="btn btn-primary" style="width:100%;" id="btn-sync-now"><i class="fa-solid fa-rotate"></i> SYNC ALL RECORDS NOW</button>
+                </div>
+            </section>
+
+            <!-- ==========================================
+                 8. SETTINGS & DEVELOPER INTELLIGENCE HUB
+                 ========================================== -->
+            <section id="view-settings" class="view-section">
+                <div class="card">
+                    <div class="card-header"><div class="card-title"><i class="fa-solid fa-sliders"></i> OPERATIONAL SETTINGS</div></div>
+                    <div style="display:flex;flex-direction:column;gap:16px;">
+                        <div>
+                            <label style="display:block;font-weight:600;margin-bottom:6px;font-size:13px;">Demo Patrol Scenario</label>
+                            <select id="select-demo-scenario" style="width:100%;padding:12px;background:rgba(10,16,28,0.9);color:#FFF;border:var(--glass-border);border-radius:8px;font-size:14px;">
+                                <option value="NORMAL_PATROL">Normal Patrol (Standard Pulsed Energizer)</option>
+                                <option value="SINGLE_WARNING">Single Warning (Pulsed → Uncertain Burst)</option>
+                                <option value="REPEATED_MAINS">Repeated Mains Detection (Continuous 50Hz Alert)</option>
+                                <option value="NOISY_ENV">Noisy Environment (High Ambient EMI Floor)</option>
+                                <option value="MANUAL">Manual Signal Mode Selector...</option>
+                            </select>
+                        </div>
+
+                        <div>
+                            <label style="display:block;font-weight:600;margin-bottom:6px;font-size:13px;">Manual Signal Waveform</label>
+                            <select id="select-demo-mode" style="width:100%;padding:12px;background:rgba(10,16,28,0.9);color:#FFF;border:var(--glass-border);border-radius:8px;font-size:14px;">
+                                <option value="PULSED_FENCE">Pulsed Fence-Like (~1.2Hz Energizer)</option>
+                                <option value="MAINS_LIKE">Continuous / Mains-Like (50Hz AC Line)</option>
+                                <option value="AMBIENT_EMI">Ambient EMI (Noise Floor)</option>
+                                <option value="UNCERTAIN">Uncertain / Complex Distorted Waveform</option>
+                            </select>
+                        </div>
+
+                        <!-- Toggles -->
+                        <div style="display:flex;align-items:center;justify-content:space-between;">
+                            <span style="font-weight:600;font-size:13px;">Haptic Feedback (Vibrations)</span>
+                            <label style="position:relative;width:48px;height:26px;cursor:pointer;">
+                                <input type="checkbox" id="toggle-haptic" checked style="opacity:0;width:0;height:0;">
+                                <span style="position:absolute;inset:0;background:rgba(255,255,255,0.1);border-radius:13px;transition:0.2s;"></span>
+                                <span id="haptic-knob" style="position:absolute;top:3px;left:25px;width:20px;height:20px;background:var(--color-pulsed);border-radius:50%;transition:0.2s;"></span>
+                            </label>
+                        </div>
+
+                        <div style="display:flex;align-items:center;justify-content:space-between;">
+                            <span style="font-weight:600;font-size:13px;">Auto-Scan Background Processing</span>
+                            <label style="position:relative;width:48px;height:26px;cursor:pointer;">
+                                <input type="checkbox" id="toggle-autoscan" style="opacity:0;width:0;height:0;">
+                                <span style="position:absolute;inset:0;background:rgba(255,255,255,0.1);border-radius:13px;transition:0.2s;"></span>
+                                <span id="autoscan-knob" style="position:absolute;top:3px;left:3px;width:20px;height:20px;background:var(--text-muted);border-radius:50%;transition:0.2s;"></span>
+                            </label>
+                        </div>
+
+                        <div style="display:flex;align-items:center;justify-content:space-between;">
+                            <span style="font-weight:600;font-size:13px;">Developer Debug Mode</span>
+                            <label style="position:relative;width:48px;height:26px;cursor:pointer;">
+                                <input type="checkbox" id="toggle-debug" style="opacity:0;width:0;height:0;">
+                                <span style="position:absolute;inset:0;background:rgba(255,255,255,0.1);border-radius:13px;transition:0.2s;"></span>
+                                <span id="debug-knob" style="position:absolute;top:3px;left:3px;width:20px;height:20px;background:var(--text-muted);border-radius:50%;transition:0.2s;"></span>
+                            </label>
+                        </div>
+
+                        <div>
+                            <button class="btn btn-secondary" style="width:100%;" id="btn-install-pwa"><i class="fa-solid fa-download"></i> INSTALL AS PWA APP</button>
+                        </div>
+                        <div>
+                            <button class="btn btn-danger btn-sm" id="btn-clear-storage"><i class="fa-solid fa-trash-can"></i> CLEAR ALL LOCAL INDEXEDDB DATA</button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Developer-Only Debug & ML Hub -->
+                <div class="card" id="debug-panel" style="display:none;">
+                    <div class="card-header">
+                        <div class="card-title"><i class="fa-solid fa-code"></i> DEVELOPER ML & DEBUG HUB</div>
+                        <span class="badge badge-warning">DEV ONLY</span>
+                    </div>
+
+                    <div style="display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap;">
+                        <button class="btn btn-secondary btn-sm" id="btn-show-ml-perf"><i class="fa-solid fa-chart-pie"></i> MODEL PERFORMANCE</button>
+                        <button class="btn btn-secondary btn-sm" id="btn-show-dataset-stat"><i class="fa-solid fa-database"></i> DATASET STATUS</button>
+                    </div>
+
+                    <div class="card-title" style="margin-bottom:6px;"><i class="fa-solid fa-arrow-right-to-bracket"></i> MODEL INPUT FEATURES</div>
+                    <pre id="debug-model-input" style="background:#080C14;padding:10px;border-radius:8px;font-size:11px;font-family:var(--font-mono);color:var(--text-secondary);overflow-x:auto;margin-bottom:12px;">Waiting for feature frame...</pre>
+
+                    <div class="card-title" style="margin-bottom:6px;"><i class="fa-solid fa-arrow-right-from-bracket"></i> STANDARDIZED ML OUTPUT</div>
+                    <pre id="debug-model-output" style="background:#080C14;padding:10px;border-radius:8px;font-size:11px;font-family:var(--font-mono);color:var(--color-pulsed);overflow-x:auto;">Waiting for classification output...</pre>
+                </div>
+            </section>
+
+        </main>
+    </div>
+
+    <!-- ===== MOBILE BOTTOM NAVIGATION (5 Primary Tabs) ===== -->
+    <nav class="bottom-nav">
+        <div class="bnav-item active" data-view="dashboard"><i class="fa-solid fa-gauge-high"></i><span>Home</span></div>
+        <div class="bnav-item" data-view="signal"><i class="fa-solid fa-wave-square"></i><span>Signal</span></div>
+        <div class="bnav-item" data-view="map"><i class="fa-solid fa-map-location-dot"></i><span>Map</span></div>
+        <div class="bnav-item" data-view="events"><i class="fa-solid fa-list-check"></i><span>Events</span></div>
+        <div class="bnav-item" data-view="patrol"><i class="fa-solid fa-route"></i><span>Patrol</span></div>
+    </nav>
+
+    <!-- Floating Action Button (+ CAPTURE) -->
+    <button class="fab-capture" id="fab-capture" title="Quick Capture Detection Event"><i class="fa-solid fa-plus"></i></button>
+
+    <!-- ===== RAPID DETECTION ALERT OVERLAY ===== -->
+    <div class="rapid-alert-overlay" id="rapid-alert">
+        <i class="fa-solid fa-triangle-exclamation rapid-alert-icon" id="rapid-alert-icon" style="color:var(--color-mains);"></i>
+        <div style="font-size:12px;text-transform:uppercase;letter-spacing:1px;color:var(--text-muted);margin-bottom:4px;">HIGH-PRIORITY DETECTION</div>
+        <div class="rapid-alert-type" id="rapid-alert-type">CONTINUOUS / MAINS-LIKE</div>
+        <div class="rapid-alert-conf" id="rapid-alert-conf">94% CONFIDENCE</div>
+        <div class="rapid-alert-meta" id="rapid-alert-freq">50.1 Hz — 88% Signal</div>
+        <div class="rapid-alert-meta" style="color:var(--color-pulsed);">GPS LOCATION CAPTURED</div>
+        <div style="font-size:11px;color:var(--text-muted);margin-top:8px;">High-priority inspection recommended.</div>
+        <div class="rapid-alert-actions">
+            <button class="btn btn-danger btn-lg" id="rapid-alert-flag"><i class="fa-solid fa-flag"></i> FLAG EVENT</button>
+            <button class="btn btn-secondary btn-lg" id="rapid-alert-dismiss"><i class="fa-solid fa-xmark"></i> DISMISS</button>
+        </div>
+    </div>
+
+    <!-- ===== QUICK CAPTURE MODAL (+ CAPTURE with Photo & Voice) ===== -->
+    <div class="modal-overlay" id="modal-quick-capture">
+        <div class="modal-card">
+            <div class="modal-handle"></div>
+            <div class="card-header">
+                <div class="card-title"><i class="fa-solid fa-camera"></i> QUICK CAPTURE DETECTION EVIDENCE</div>
+                <button class="btn btn-secondary btn-sm" id="btn-close-capture"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+            
+            <div class="telemetry-grid" style="margin-bottom:14px;" id="capture-summary-grid">
+                <div class="metric-item"><div class="metric-label">Signal Type</div><div class="metric-value" style="font-size:13px;" id="cap-type">PULSED</div></div>
+                <div class="metric-item"><div class="metric-label">Confidence</div><div class="metric-value" id="cap-conf">91%</div></div>
+            </div>
+
+            <!-- Photo Attachment -->
+            <div style="margin-bottom:14px;">
+                <label style="display:block;font-size:12px;font-weight:600;margin-bottom:6px;"><i class="fa-solid fa-camera"></i> ATTACH PHOTO EVIDENCE (OFFLINE STORED)</label>
+                <input type="file" id="capture-photo-input" accept="image/*" capture="environment" style="width:100%;padding:8px;background:rgba(10,16,28,0.8);color:#FFF;border:var(--glass-border);border-radius:6px;font-size:12px;">
+            </div>
+
+            <!-- Field Notes -->
+            <div style="margin-bottom:14px;">
+                <label style="display:block;font-size:12px;font-weight:600;margin-bottom:6px;"><i class="fa-solid fa-pen"></i> FIELD OFFICER NOTES</label>
+                <textarea id="capture-notes-input" placeholder="e.g. Signal detected along western fence boundary wire..." style="width:100%;height:65px;padding:8px;background:rgba(10,16,28,0.9);color:#FFF;border:var(--glass-border);border-radius:8px;font-size:13px;"></textarea>
+            </div>
+
+            <div style="display:flex;gap:10px;">
+                <button class="btn btn-primary" style="flex:1;" id="btn-save-quick-capture"><i class="fa-solid fa-save"></i> SAVE TO OFFLINE STORE</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ===== PRE-PATROL SELF TEST MODAL ===== -->
+    <div class="modal-overlay" id="modal-selftest">
+        <div class="modal-card">
+            <div class="modal-handle"></div>
+            <div class="card-header">
+                <div class="card-title"><i class="fa-solid fa-stethoscope"></i> PRE-PATROL SYSTEM DIAGNOSTIC CHECK</div>
+                <button class="btn btn-secondary btn-sm" id="btn-close-selftest"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+            <div style="display:flex;flex-direction:column;gap:10px;margin-bottom:16px;" id="selftest-checklist">
+                <div class="health-item"><span class="health-icon"><i class="fa-solid fa-bluetooth-b"></i></span> 1. ESP32 BLE Communication <strong style="margin-left:auto;" id="st-ble">—</strong></div>
+                <div class="health-item"><span class="health-icon"><i class="fa-solid fa-satellite-dish"></i></span> 2. Smartphone GPS Geolocation <strong style="margin-left:auto;" id="st-gps">—</strong></div>
+                <div class="health-item"><span class="health-icon"><i class="fa-solid fa-bolt"></i></span> 3. ADC Analog Front-End <strong style="margin-left:auto;" id="st-adc">—</strong></div>
+                <div class="health-item"><span class="health-icon"><i class="fa-solid fa-tower-broadcast"></i></span> 4. E-Field Antenna Probe <strong style="margin-left:auto;" id="st-sensor">—</strong></div>
+                <div class="health-item"><span class="health-icon"><i class="fa-solid fa-database"></i></span> 5. IndexedDB Storage <strong style="margin-left:auto;" id="st-storage">—</strong></div>
+                <div class="health-item"><span class="health-icon"><i class="fa-solid fa-brain"></i></span> 6. Signal Intelligence Engine <strong style="margin-left:auto;" id="st-engine">—</strong></div>
+                <div class="health-item"><span class="health-icon"><i class="fa-solid fa-battery-three-quarters"></i></span> 7. Battery Level Verification <strong style="margin-left:auto;" id="st-batt">—</strong></div>
+            </div>
+            <div style="text-align:center;font-size:14px;font-weight:700;color:var(--text-muted);" id="st-final-result">TAP "SELF TEST" TO BEGIN</div>
+        </div>
+    </div>
+
+    <!-- ===== PATROL SUMMARY MODAL ===== -->
+    <div class="modal-overlay" id="modal-patrol-summary">
+        <div class="modal-card">
+            <div class="modal-handle"></div>
+            <div class="card-header">
+                <div class="card-title"><i class="fa-solid fa-flag-checkered"></i> PATROL SESSION COMPLETED</div>
+                <button class="btn btn-secondary btn-sm" id="btn-close-patrol-summary"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+            <div class="telemetry-grid" style="margin-bottom:16px;" id="patrol-summary-grid"></div>
+            <button class="btn btn-primary" style="width:100%;" id="btn-patrol-report"><i class="fa-solid fa-file-pdf"></i> GENERATE FIELD PATROL REPORT</button>
+        </div>
+    </div>
+
+    <!-- ===== SYSTEM STATUS DRAWER ===== -->
+    <div class="modal-overlay" id="modal-status-drawer">
+        <div class="modal-card">
+            <div class="modal-handle"></div>
+            <div class="card-header">
+                <div class="card-title"><i class="fa-solid fa-server"></i> LIVE SYSTEM DIAGNOSTIC DRAWER</div>
+                <button class="btn btn-secondary btn-sm" id="btn-close-status-drawer"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+            <div class="health-grid" id="status-drawer-grid"></div>
+        </div>
+    </div>
+
+    <!-- ===== DEVELOPER: MODEL PERFORMANCE MODAL ===== -->
+    <div class="modal-overlay" id="modal-ml-perf">
+        <div class="modal-card">
+            <div class="modal-handle"></div>
+            <div class="card-header">
+                <div class="card-title"><i class="fa-solid fa-chart-pie"></i> ML CLASSIFIER PERFORMANCE BENCHMARK</div>
+                <button class="btn btn-secondary btn-sm" id="btn-close-ml-perf"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+            <div style="background:rgba(10,16,28,0.7);padding:14px;border-radius:10px;margin-bottom:14px;">
+                <div style="font-weight:700;font-size:14px;margin-bottom:4px;">Model: FenceSentinel-RF-v1</div>
+                <div style="font-size:12px;color:var(--text-secondary);margin-bottom:10px;">Classification Architecture: Random Forest + Rule-Based Ensemble</div>
+                <div class="telemetry-grid">
+                    <div class="metric-item"><div class="metric-label">Accuracy</div><div class="metric-value" style="font-size:14px;color:var(--color-warning);">NOT EVALUATED YET</div></div>
+                    <div class="metric-item"><div class="metric-label">Precision</div><div class="metric-value" style="font-size:14px;color:var(--color-warning);">NOT EVALUATED YET</div></div>
+                    <div class="metric-item"><div class="metric-label">Recall</div><div class="metric-value" style="font-size:14px;color:var(--color-warning);">NOT EVALUATED YET</div></div>
+                    <div class="metric-item"><div class="metric-label">F1 Score</div><div class="metric-value" style="font-size:14px;color:var(--color-warning);">NOT EVALUATED YET</div></div>
+                </div>
+            </div>
+            <p style="font-size:11px;color:var(--text-muted);text-align:center;">
+                Benchmark metrics will be calculated once real labelled field sensor datasets are collected.
+            </p>
+        </div>
+    </div>
+
+    <!-- ===== DEVELOPER: DATASET STATUS MODAL ===== -->
+    <div class="modal-overlay" id="modal-dataset-stat">
+        <div class="modal-card">
+            <div class="modal-handle"></div>
+            <div class="card-header">
+                <div class="card-title"><i class="fa-solid fa-database"></i> TRAINING DATASET REPOSITORY STATUS</div>
+                <button class="btn btn-secondary btn-sm" id="btn-close-dataset-stat"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+            <div style="background:rgba(10,16,28,0.7);padding:14px;border-radius:10px;margin-bottom:14px;">
+                <div class="telemetry-grid">
+                    <div class="metric-item"><div class="metric-label">Total Samples</div><div class="metric-value" style="font-size:14px;color:var(--color-warning);">NOT AVAILABLE</div></div>
+                    <div class="metric-item"><div class="metric-label">Pulsed Samples</div><div class="metric-value" style="font-size:14px;color:var(--color-warning);">NOT AVAILABLE</div></div>
+                    <div class="metric-item"><div class="metric-label">Mains-Like Samples</div><div class="metric-value" style="font-size:14px;color:var(--color-warning);">NOT AVAILABLE</div></div>
+                    <div class="metric-item"><div class="metric-label">Ambient Samples</div><div class="metric-value" style="font-size:14px;color:var(--color-warning);">NOT AVAILABLE</div></div>
+                </div>
+            </div>
+            <p style="font-size:11px;color:var(--text-muted);text-align:center;">
+                Physical waveform collection in progress via function generator + LM358 + ESP32 ADC.
+            </p>
+        </div>
+    </div>
+
+</div>
+
+<!-- JavaScript Application Modules -->
+<script src="js/storage.js"></script>
+<script src="js/classification.js"></script>
+<script src="js/waveform.js"></script>
+<script src="js/demo.js"></script>
+<script src="js/ble.js"></script>
+<script src="js/location.js"></script>
+<script src="js/reports.js"></script>
+<script src="js/app.js"></script>
+
+<!-- Service Worker Registration for PWA Offline Functionality -->
+<script>
+if ('serviceWorker' in navigator) {
+    window.addEventListener('load', () => {
+        navigator.serviceWorker.register('sw.js').then(reg => {
+            console.log('[PWA] Service Worker registered:', reg.scope);
+        }).catch(err => {
+            console.warn('[PWA] Service Worker registration failed:', err);
+        });
+    });
+}
+</script>
+
+</body>
+</html>
